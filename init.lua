@@ -731,8 +731,34 @@ do
   -- Enable the following language servers
   --  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
   --  See `:help lsp-config` for information about keys and how to configure
+  -- Path to the Vue language server installed by Mason; vtsls loads its TypeScript plugin
+  -- so that `<script lang="ts">` blocks in .vue files get full TypeScript support.
+  local vue_language_server_path = vim.fn.stdpath 'data' .. '/mason/packages/vue-language-server/node_modules/@vue/language-server'
+
   ---@type table<string, vim.lsp.Config>
   local servers = {
+    -- TypeScript / JavaScript (also handles the script part of .vue files via @vue/typescript-plugin)
+    vtsls = {
+      filetypes = { 'typescript', 'javascript', 'javascriptreact', 'typescriptreact', 'vue' },
+      settings = {
+        vtsls = {
+          tsserver = {
+            globalPlugins = {
+              {
+                name = '@vue/typescript-plugin',
+                location = vue_language_server_path,
+                languages = { 'vue' },
+                configNamespace = 'typescript',
+              },
+            },
+          },
+        },
+      },
+    },
+
+    -- Vue (templates, styles, and Vue-specific features)
+    vue_ls = {},
+
     -- clangd = {},
     -- gopls = {},
     -- pyright = {},
@@ -804,6 +830,7 @@ do
   local ensure_installed = vim.tbl_keys(servers or {})
   vim.list_extend(ensure_installed, {
     -- You can add other tools here that you want Mason to install
+    'prettierd', -- Used to format JS/TS/Vue/CSS/JSON
   })
 
   require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -846,6 +873,14 @@ do
       --
       -- You can use 'stop_after_first' to run the first available formatter from the list
       -- javascript = { "prettierd", "prettier", stop_after_first = true },
+      javascript = { 'prettierd', 'prettier', stop_after_first = true },
+      javascriptreact = { 'prettierd', 'prettier', stop_after_first = true },
+      typescript = { 'prettierd', 'prettier', stop_after_first = true },
+      typescriptreact = { 'prettierd', 'prettier', stop_after_first = true },
+      vue = { 'prettierd', 'prettier', stop_after_first = true },
+      css = { 'prettierd', 'prettier', stop_after_first = true },
+      scss = { 'prettierd', 'prettier', stop_after_first = true },
+      json = { 'prettierd', 'prettier', stop_after_first = true },
     },
   }
 
@@ -948,7 +983,7 @@ do
   vim.pack.add { { src = gh 'nvim-treesitter/nvim-treesitter', version = 'main' } }
 
   -- Ensure basic parsers are installed
-  local parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' }
+  local parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'vue', 'typescript', 'tsx', 'javascript', 'jsdoc', 'css', 'scss', 'json' }
   require('nvim-treesitter').install(parsers)
 
   ---@param buf integer
