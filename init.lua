@@ -742,7 +742,15 @@ do
     vtsls = {
       filetypes = { 'typescript', 'javascript', 'javascriptreact', 'typescriptreact', 'vue' },
       settings = {
+        typescript = {
+          -- Large projects (e.g. big Nuxt apps) blow past tsserver's default 3 GB heap, which makes
+          -- it abort and restart in a loop ("The JS/TS language service crashed 5 times...").
+          tsserver = { maxTsServerMemory = 12288 },
+        },
         vtsls = {
+          -- Use the project's own TypeScript (node_modules/typescript) when it has one, so the
+          -- editor matches what vue-tsc / the build uses.
+          autoUseWorkspaceTsdk = true,
           tsserver = {
             globalPlugins = {
               {
