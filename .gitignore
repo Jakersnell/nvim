@@ -12,3 +12,7 @@ spell/
 nvim-pack-lock.json
 
 .DS_Store
+
+# Plugin/tool install data (lives in stdpath("data"), not config)
+mason/
+site/
