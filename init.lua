@@ -416,6 +416,7 @@ do
       { 'gr', group = 'LSP Actions', mode = { 'n' } },
       { '<leader>o', group = '[O]bsidian / markdown' },
       { '<leader>g', group = '[G]it review', mode = { 'n', 'v' } },
+      { '<leader>y', group = '[Y]ank / copy to clipboard', mode = { 'n', 'v' } },
     },
   }
 
