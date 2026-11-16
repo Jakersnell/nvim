@@ -1,24 +1,18 @@
 -- Code review in the terminal
---  diffview.nvim: file panel + side-by-side diffs for the working tree, a branch, or file history
+--  codediff.nvim: VS Code-style diffs (line + character highlighting) with a source-control panel,
+--    for the working tree, a branch, or file history. Downloads its diff library on first use.
 --  octo.nvim: GitHub PRs inside nvim (threads, line comments, submitting reviews) via the `gh` CLI
--- https://github.com/sindrets/diffview.nvim
+-- https://github.com/esmuellert/codediff.nvim
 -- https://github.com/pwntester/octo.nvim
 
 vim.pack.add {
-  'https://github.com/sindrets/diffview.nvim',
+  'https://github.com/esmuellert/codediff.nvim',
   'https://github.com/pwntester/octo.nvim',
 }
 
 -- [[ Local diffs ]]
-local close_diffview = { 'n', 'q', '<Cmd>DiffviewClose<CR>', { desc = 'Close diffview' } }
-require('diffview').setup {
-  enhanced_diff_hl = true,
-  -- `q` closes from the side panels only; in the diff buffers it stays macro-record
-  keymaps = {
-    file_panel = { close_diffview },
-    file_history_panel = { close_diffview },
-  },
-}
+-- Each review opens in its own tab. Inside it: `q` closes, `t` toggles side-by-side/inline,
+-- `]c`/`[c` jump between changes, `]f`/`[f` between files, `-` stages a file, `g?` lists every key.
 
 -- The ref a PR from this branch would target: origin's default branch, else a common name.
 local function base_ref()
@@ -37,16 +31,15 @@ local function review_branch()
     vim.notify('No base branch found (tried origin/HEAD, main, master)', vim.log.levels.WARN)
     return
   end
-  vim.cmd.DiffviewOpen(base .. '...HEAD')
+  vim.cmd.CodeDiff(base .. '...HEAD')
 end
 
 local map = function(lhs, rhs, desc, mode) vim.keymap.set(mode or 'n', lhs, rhs, { desc = desc }) end
-map('<leader>gd', '<Cmd>DiffviewOpen<CR>', '[G]it [D]iff uncommitted changes')
+map('<leader>gd', '<Cmd>CodeDiff<CR>', '[G]it [D]iff uncommitted changes (review mode)')
 map('<leader>gb', review_branch, '[G]it diff [B]ranch against base (PR view)')
-map('<leader>gf', '<Cmd>DiffviewFileHistory %<CR>', '[G]it [F]ile history')
-map('<leader>gf', ":'<,'>DiffviewFileHistory<CR>", '[G]it history of selected lines', 'x')
-map('<leader>gl', '<Cmd>DiffviewFileHistory<CR>', '[G]it [L]og (repo history)')
-map('<leader>gq', '<Cmd>DiffviewClose<CR>', '[G]it diff [Q]uit')
+map('<leader>gf', '<Cmd>CodeDiff history %<CR>', '[G]it [F]ile history')
+map('<leader>gf', ":<C-u>'<,'>CodeDiff history<CR>", '[G]it history of selected lines', 'x')
+map('<leader>gl', '<Cmd>CodeDiff history<CR>', '[G]it [L]og (repo history)')
 
 -- [[ GitHub pull requests ]]
 require('octo').setup {
