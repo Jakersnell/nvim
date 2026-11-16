@@ -1,8 +1,13 @@
 -- Code review in the terminal
 --  diffview.nvim: file panel + side-by-side diffs for the working tree, a branch, or file history
+--  octo.nvim: GitHub PRs inside nvim (threads, line comments, submitting reviews) via the `gh` CLI
 -- https://github.com/sindrets/diffview.nvim
+-- https://github.com/pwntester/octo.nvim
 
-vim.pack.add { 'https://github.com/sindrets/diffview.nvim' }
+vim.pack.add {
+  'https://github.com/sindrets/diffview.nvim',
+  'https://github.com/pwntester/octo.nvim',
+}
 
 -- [[ Local diffs ]]
 local close_diffview = { 'n', 'q', '<Cmd>DiffviewClose<CR>', { desc = 'Close diffview' } }
@@ -42,3 +47,17 @@ map('<leader>gf', '<Cmd>DiffviewFileHistory %<CR>', '[G]it [F]ile history')
 map('<leader>gf', ":'<,'>DiffviewFileHistory<CR>", '[G]it history of selected lines', 'x')
 map('<leader>gl', '<Cmd>DiffviewFileHistory<CR>', '[G]it [L]og (repo history)')
 map('<leader>gq', '<Cmd>DiffviewClose<CR>', '[G]it diff [Q]uit')
+
+-- [[ GitHub pull requests ]]
+require('octo').setup {
+  picker = 'telescope',
+  -- A bare `:Octo` lists every available action
+  enable_builtin = true,
+}
+-- PR and comment buffers are markdown
+vim.treesitter.language.register('markdown', 'octo')
+
+map('<leader>gp', '<Cmd>Octo pr list<CR>', '[G]itHub [P]ull requests')
+-- Works from a PR buffer, or from a checked-out branch that has a PR
+map('<leader>gr', function() require('octo.reviews').start_or_resume_review() end, '[G]itHub start/resume [R]eview')
+map('<leader>gs', '<Cmd>Octo review submit<CR>', '[G]itHub [S]ubmit review')
