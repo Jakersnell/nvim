@@ -65,12 +65,49 @@ local function builtin_commands()
   return results
 end
 
+-- Keymaps that only exist in one context (e.g. inside a plugin's own tab), registered with
+-- `M.add_scoped` so they can be found from anywhere. Each spec is
+-- { scope = <label>, active = fn() -> bool, hint = <how to get there>, keys = fn() -> { { mode, lhs, desc } } }.
+local scoped_specs = {}
+
+-- Canonical form of a key sequence, so "<leader>b", " b" and "<Space>b" compare equal.
+local function normalize(lhs) return vim.fn.keytrans(vim.api.nvim_replace_termcodes(lhs, true, true, true)) end
+
+function M.add_scoped(spec) table.insert(scoped_specs, spec) end
+
+local function scoped_keymaps()
+  local results = {}
+  for _, spec in ipairs(scoped_specs) do
+    local ok_active, active = pcall(spec.active)
+    local ok_keys, keys = pcall(spec.keys)
+    for _, k in ipairs(ok_keys and keys or {}) do
+      table.insert(results, {
+        mode = k[1],
+        lhs = k[2],
+        raw_lhs = k[2],
+        desc = k[3],
+        keymap = true,
+        scope = spec.scope,
+        active = ok_active and active,
+        hint = spec.hint,
+      })
+    end
+  end
+  return results
+end
+
 --- Keymaps currently defined (global + current buffer).
-local function user_keymaps()
+--- `skip` holds "<mode><lhs>" of buffer-local maps already listed with a better description.
+local function user_keymaps(skip)
+  skip = skip or {}
   local results, seen = {}, {}
   local buf = vim.api.nvim_get_current_buf()
   for _, mode in ipairs { 'n', 'i', 'c', 'x', 'o', 't' } do
-    local maps = vim.list_extend(vim.api.nvim_buf_get_keymap(buf, mode), vim.api.nvim_get_keymap(mode))
+    local buf_maps = vim.api.nvim_buf_get_keymap(buf, mode)
+    for _, map in ipairs(buf_maps) do
+      if skip[mode .. normalize(map.lhs)] then seen[mode .. map.lhs] = true end
+    end
+    local maps = vim.list_extend(buf_maps, vim.api.nvim_get_keymap(mode))
     for _, map in ipairs(maps) do
       local key = mode .. map.lhs
       if not seen[key] and not map.lhs:find '<Plug>' then
@@ -98,7 +135,14 @@ function M.pick(opts)
   local action_state = require 'telescope.actions.state'
   local entry_display = require 'telescope.pickers.entry_display'
 
-  local items = vim.list_extend(user_keymaps(), builtin_commands())
+  -- While a scope is active its keys are also buffer-local maps; list them once, with the scoped
+  -- description (which is written to be searchable).
+  local scoped = scoped_keymaps()
+  local skip = {}
+  for _, item in ipairs(scoped) do
+    if item.active then skip[item.mode .. normalize(item.lhs)] = true end
+  end
+  local items = vim.list_extend(vim.list_extend(user_keymaps(skip), scoped), builtin_commands())
 
   local displayer = entry_display.create {
     separator = ' ',
@@ -113,12 +157,14 @@ function M.pick(opts)
         entry_maker = function(item)
           return {
             value = item,
-            ordinal = table.concat({ item.mode, item.lhs, item.desc }, ' '),
+            ordinal = table.concat({ item.mode, item.lhs, item.scope or '', item.desc }, ' '),
             display = function(entry)
               local v = entry.value
+              local kind = v.scope or (v.keymap and 'keymap' or 'builtin')
+              local kind_hl = v.scope and 'TelescopeResultsFunction' or (v.keymap and 'TelescopeResultsIdentifier' or 'TelescopeResultsComment')
               return displayer {
                 v.mode,
-                { v.keymap and 'keymap' or 'builtin', v.keymap and 'TelescopeResultsIdentifier' or 'TelescopeResultsComment' },
+                { kind, kind_hl },
                 v.lhs,
                 v.desc,
               }
@@ -133,7 +179,9 @@ function M.pick(opts)
           actions.close(prompt_bufnr)
           if not selection then return end
           local v = selection.value
-          if v.keymap then
+          if v.scope and not v.active then
+            vim.notify(('%s only works %s'):format(v.lhs, v.hint or ('in ' .. v.scope)), vim.log.levels.INFO)
+          elseif v.keymap then
             vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(v.raw_lhs, true, false, true), 't', true)
           else
             vim.cmd.help(vim.fn.escape(v.tag, ' '))

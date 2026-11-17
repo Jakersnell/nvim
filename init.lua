@@ -363,21 +363,32 @@ do
     -- gitsigns.nvim's recommended keymaps:
     on_attach = function(bufnr)
       -- Navigation
+      -- In a codediff review tab, ]c/[c follow the review's diff (this buffer-local map would
+      -- otherwise override codediff's on the working-tree pane)
+      local function in_review()
+        local ok, lifecycle = pcall(require, 'codediff.ui.lifecycle')
+        return ok and lifecycle.get_session(vim.api.nvim_get_current_tabpage()) ~= nil
+      end
+
       vim.keymap.set('n', ']c', function()
-        if vim.wo.diff then
+        if in_review() then
+          require('codediff').next_hunk()
+        elseif vim.wo.diff then
           vim.cmd.normal { ']c', bang = true }
         else
           gitsigns.nav_hunk 'next'
         end
-      end, { desc = 'Jump to next git [c]hange', buf = bufnr })
+      end, { desc = 'Jump to next git [c]hange (next diff chunk / hunk)', buf = bufnr })
 
       vim.keymap.set('n', '[c', function()
-        if vim.wo.diff then
+        if in_review() then
+          require('codediff').prev_hunk()
+        elseif vim.wo.diff then
           vim.cmd.normal { '[c', bang = true }
         else
           gitsigns.nav_hunk 'prev'
         end
-      end, { desc = 'Jump to previous git [c]hange', buf = bufnr })
+      end, { desc = 'Jump to previous git [c]hange (previous diff chunk / hunk)', buf = bufnr })
 
       -- Visual mode actions
       vim.keymap.set('v', '<leader>hs', function() gitsigns.stage_hunk { vim.fn.line '.', vim.fn.line 'v' } end, { desc = 'git [s]tage hunk', buf = bufnr })
